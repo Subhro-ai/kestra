@@ -84,9 +84,8 @@ public abstract class AbstractV2_0_26UnscheduledTriggerMigration implements Migr
                     id,
                     TriggerType.UNSCHEDULED,
                     trigger.stopAfter(),
-                    Boolean.TRUE.equals(trigger.disabled()),
                     VNodes.computeVNodeFromTrigger(id, vnodes)
-                );
+                ).sourceDisabled(null, Boolean.TRUE.equals(trigger.disabled()));
             })
             .toList();
     }
