@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+option java_package = "io.kestra.controller.grpc";
+option java_multiple_files = true;
+
+import "request.proto";
+import "metastore.proto";
+
+// Service for KV store entries - reads and writes the entries of the namespace KV stores on behalf of a worker
+// that does not reach the internal storage holding them. Every operation of an entry goes through this service,
+// so its metadata and its value cannot end up in two different places. Values are streamed, since a KV value has
+// no upper bound on its size.
+service KVStoreService {
+  // Put an entry: the first message carries the entry, the following ones the serialized value
+  rpc put(stream KVPutRequest) returns (KVPutResponse);
+
+  // Get the serialized value of an entry. NOT_FOUND when there is no value, FAILED_PRECONDITION when it expired
+  rpc getRawValue(KVKeyRequest) returns (stream StreamChunk);
+
+  // Get an entry, without its value
+  rpc get(KVKeyRequest) returns (OpaqueData);
+
+  // List the non-expired, non-deleted entries of a namespace, without their values
+  rpc list(NamespaceRequest) returns (OpaqueData);
+
+  // Delete an entry
+  rpc delete(KVKeyRequest) returns (BooleanResponse);
+}
+
+message KVKeyRequest {
+  RequestOrResponseHeader header = 1;
+  string tenant_id = 2;
+  string namespace = 3;
+  string key = 4;
+}
+
+message KVPutRequest {
+  oneof payload {
+    KVPutEntry entry = 1;
+    StreamChunk chunk = 2;
+  }
+}
+
+message KVPutEntry {
+  KVKeyRequest key = 1;
+  bool overwrite = 2;
+  optional string description = 3;
+  // The expiration date, as an ISO-8601 instant
+  optional string expiration_date = 4;
+}
+
+message KVPutResponse {
+  RequestOrResponseHeader header = 1;
+}
